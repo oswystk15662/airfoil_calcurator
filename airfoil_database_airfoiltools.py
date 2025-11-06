@@ -2,147 +2,142 @@
 import numpy as np
 import pandas as pd
 from scipy.interpolate import RegularGridInterpolator
-import io
+import os
+import glob # ファイル検索用
 
-print("--- [DEBUG] Loading Airfoil Database (AirfoilTools/XFLR5 Edition) ---")
+print("--- [DEBUG] Loading Airfoil Database (Robust Interpolation V2) ---")
 
-# --- データベースのシミュレーション ---
-# 本来、このデータは外部のCSVファイルから読み込みます。
-# (例: pd.read_csv("airfoil_data/s1223/re_10000.csv"))
-#
-# ここでは、CSVファイルの中身を文字列としてハードコードし、
-# データベースが構築されるプロセスをシミュレートします。
-
-# --- S1223 (低Re, 高揚力型) ---
-# Re=10k, Re=50k の2つのデータポイントを模倣
-S1223_RE10K_CSV = """
-AoA,CL,CD,CM
--5.0,-0.20,0.08,0.0
-0.0,0.50,0.05,0.0
-5.0,1.10,0.06,0.0
-10.0,1.50,0.10,0.0
-15.0,1.30,0.20,0.0
-"""
-S1223_RE50K_CSV = """
-AoA,CL,CD,CM
--5.0,-0.15,0.06,0.0
-0.0,0.60,0.04,0.0
-5.0,1.25,0.05,0.0
-10.0,1.70,0.08,0.0
-15.0,1.50,0.18,0.0
-"""
-
-# --- E61 (低Re, 標準型) ---
-E61_RE10K_CSV = """
-AoA,CL,CD,CM
--5.0,-0.10,0.06,0.0
-0.0,0.30,0.04,0.0
-5.0,0.80,0.05,0.0
-10.0,1.10,0.10,0.0
-15.0,0.90,0.22,0.0
-"""
-E61_RE50K_CSV = """
-AoA,CL,CD,CM
--5.0,-0.05,0.04,0.0
-0.0,0.40,0.03,0.0
-5.0,0.90,0.04,0.0
-10.0,1.25,0.09,0.0
-15.0,1.10,0.20,0.0
-"""
-
-# データベースに登録する翼型と、そのCSVデータ
-AIRFOIL_FILES = {
-    "S1223": {
-        10000: S1223_RE10K_CSV,
-        50000: S1223_RE50K_CSV
-    },
-    "E61": {
-        10000: E61_RE10K_CSV,
-        50000: E61_RE50K_CSV
-    }
-}
+# 読み込む翼型データが保存されている場所
+CSV_DIR = "airfoil_data/csv_polars"
 
 # 補間オブジェクトをグローバルに保存する辞書
 # _airfoil_interpolators["S1223"] = (cl_interpolator, cd_interpolator)
 _airfoil_interpolators = {}
 
+# --- [修正点 1] ---
+# 私たちがデータベースに欲しい「標準の」迎角グリッドを定義する
+# (generate_database.py で指定した範囲と一致させる)
+STANDARD_AOAS = np.arange(-5.0, 15.0 + 0.5, 0.5) # -5.0, -4.5, ..., 14.5, 15.0 (計41点)
+
+# -------------------
+
 
 def _load_airfoil_data():
     """
-    起動時に一度だけ実行され、CSVデータを読み込み、
+    起動時に一度だけ実行され、CSV_DIR にあるCSVデータをすべて読み込み、
     2D補間オブジェクト (Re, AoA) -> (CL, CD) を作成する。
+    不完全なCSVファイル（XFOILが途中で失敗したもの）も処理可能。
     """
-    for airfoil_name, files_dict in AIRFOIL_FILES.items():
+    
+    csv_files = glob.glob(os.path.join(CSV_DIR, "*.csv"))
+    
+    if not csv_files:
+        print(f"Warning: No CSV files found in {CSV_DIR}. Database is empty.")
+        print("Please run 'generate_database.py' first.")
+        return
+
+    airfoils_data = {} 
+    
+    for f_path in csv_files:
+        filename = os.path.basename(f_path)
+        try:
+            parts = filename.replace(".csv", "").split("_re_")
+            airfoil_name = parts[0].lower() # ◀ 小文字に統一
+            re = int(parts[1])
+            
+            if airfoil_name not in airfoils_data:
+                airfoils_data[airfoil_name] = {}
+                
+            # --- [修正点 2] ---
+            # CSVを読み込むが、中身が空でないかチェック
+            df = pd.read_csv(f_path)
+            if df.empty or len(df) < 2:
+                # print(f"Info: Skipping empty/invalid file: {filename}")
+                continue # データが少なすぎるファイルは無視
+            # --- [修正点 2ここまで] ---
+
+            airfoils_data[airfoil_name][re] = df
+            
+        except Exception as e:
+            print(f"Warning: Could not parse filename {filename}: {e}")
+            continue
+            
+    # --- [修正点 3] 補間オブジェクトの作成ロジックを変更 ---
+    for airfoil_name, re_data_dict in airfoils_data.items():
         
-        reynolds_numbers = sorted(files_dict.keys())
-        
-        # 基準となるAoA（すべてのReで共通である必要がある）
-        # 最初のファイル (re=10k) のAoAを基準とする
-        df_base = pd.read_csv(io.StringIO(files_dict[reynolds_numbers[0]]))
-        aoas = df_base['AoA'].values
-        
-        num_aoas = len(aoas)
+        reynolds_numbers = sorted(re_data_dict.keys())
+        if len(reynolds_numbers) < 2:
+            print(f"Warning: '{airfoil_name}' needs at least 2 valid Re data files for interpolation. Skipping.")
+            continue
+            
+        num_aoas = len(STANDARD_AOAS)
         num_res = len(reynolds_numbers)
         
-        # データを格納する2Dグリッド (形状: [AoAの数, Reの数])
         cl_grid = np.zeros((num_aoas, num_res))
         cd_grid = np.zeros((num_aoas, num_res))
         
+        # データを2Dグリッドに配置
         for i_re, re in enumerate(reynolds_numbers):
-            csv_data = files_dict[re]
-            df = pd.read_csv(io.StringIO(csv_data))
+            df = re_data_dict[re]
             
-            # (簡単化のため、AoAの数が一致している前提)
-            cl_grid[:, i_re] = df['CL'].values
-            cd_grid[:, i_re] = df['CD'].values
+            # XFOILのCSVからAoAとCL/CDを読み込む
+            csv_aoas = df['AoA'].values
+            csv_cls = df['CL'].values
+            csv_cds = df['CD'].values
             
+            # 1D補間を実行し、不完全なデータを標準グリッド(STANDARD_AOAS)にマッピング
+            # np.interp はソート済みの入力を期待するため、念のためソートする
+            sort_indices = np.argsort(csv_aoas)
+            csv_aoas_sorted = csv_aoas[sort_indices]
+            csv_cls_sorted = csv_cls[sort_indices]
+            csv_cds_sorted = csv_cds[sort_indices]
+            
+            # 標準グリッドに補間
+            # left/rightは、標準AoAがCSVの範囲外だった場合に使う値
+            cl_interpolated = np.interp(STANDARD_AOAS, csv_aoas_sorted, csv_cls_sorted, left=np.nan, right=np.nan)
+            cd_interpolated = np.interp(STANDARD_AOAS, csv_aoas_sorted, csv_cds_sorted, left=np.nan, right=np.nan)
+
+            cl_grid[:, i_re] = cl_interpolated
+            cd_grid[:, i_re] = cd_interpolated
+
         # 2D補間オブジェクトを作成
-        # (aoas, reynolds_numbers) の2つの軸で補間する
-        # fill_value=None, bounds_error=False は、補間範囲外の値を
-        # 最も近いデータで代用（外挿）することを意味する
         cl_interpolator = RegularGridInterpolator(
-            (aoas, reynolds_numbers), cl_grid, 
-            bounds_error=False, fill_value=None
+            (STANDARD_AOAS, reynolds_numbers), cl_grid, 
+            bounds_error=False, fill_value=None # fill_value=None は外挿を意味する
         )
         cd_interpolator = RegularGridInterpolator(
-            (aoas, reynolds_numbers), cd_grid, 
+            (STANDARD_AOAS, reynolds_numbers), cd_grid, 
             bounds_error=False, fill_value=None
         )
         
-        # 辞書に保存
         _airfoil_interpolators[airfoil_name] = (cl_interpolator, cd_interpolator)
         print(f"  [DB] Loaded '{airfoil_name}' (Re: {reynolds_numbers})")
+    # --- [修正点 3 ここまで] ---
+
 
 # --- メイン関数 (BEMTソルバーから呼び出される) ---
 def get_airfoil_performance(airfoil_name: str, reynolds: float, aoa_deg: float):
     """
     データベースから翼型性能を2D補間して取得する。
-    
-    Args:
-        airfoil_name (str): 翼型名 (e.g., "S1223")
-        reynolds (float): レイノルズ数
-        aoa_deg (float): 迎角 (度)
-        
-    Returns:
-        (cl, cd, cm)
     """
-    if airfoil_name not in _airfoil_interpolators:
-        # データベースにない翼型が呼ばれた
-        print(f"Warning: Airfoil '{airfoil_name}' not found in DB. Using fallback.")
+    
+    airfoil_name_lower = airfoil_name.lower()
+    
+    if airfoil_name_lower not in _airfoil_interpolators:
+        # print(f"Warning: Airfoil '{airfoil_name}' not found. Available: {list(_airfoil_interpolators.keys())}")
         cl, cd = (0.1, 0.2) # 悪い性能を返す
     
     else:
-        cl_func, cd_func = _airfoil_interpolators[airfoil_name]
+        cl_func, cd_func = _airfoil_interpolators[airfoil_name_lower]
         
-        # 補間点 (AoA, Re)
         point = np.array([aoa_deg, reynolds])
         
-        # 補間を実行
         cl = float(cl_func(point))
         cd = float(cd_func(point))
         
-        # 補間結果が物理的におかしい場合（XFOIL失敗時の対策）
+        # 補間結果が NaN (データ欠損) の場合
         if np.isnan(cl) or np.isnan(cd) or cd <= 0:
+            # print(f"Warning: Interpolation failed for {airfoil_name_lower} @ Re={reynolds}, AoA={aoa_deg}. Using fallback.")
             cl, cd = (0.1, 0.2) # 悪い性能を返す
 
     return cl, cd, 0.0 # (cm は 0.0 を返す)

@@ -21,35 +21,65 @@ TARGET_POWER_LIMIT = 3.26  # (W) Telloの推定限界パワー
 TARGET_THRUST_MIN = 0.196  # (N) 最低でもホバリング推力は確保
 
 # --- 3. 最適化の探索空間 ---
-R_COORDS = np.array([HUB_RADIUS, TIP_RADIUS * 0.7, TIP_RADIUS])
+R_COORDS = np.array([
+    HUB_RADIUS, 
+    TIP_RADIUS * 0.30, 
+    TIP_RADIUS * 0.55, 
+    TIP_RADIUS * 0.80, 
+    TIP_RADIUS
+])
 # 🔽 [修正] データベースに登録した翼型名 🔽
-AIRFOIL_CHOICES = ["S1223", "E61"] 
+AIRFOIL_CHOICES = [
+    "aquilla",
+    "clarky",
+    "dae11",
+    "dae21",
+    "dae31",
+    "e61",
+    "geminism",
+    "goe795",
+    "mh32",
+    "naca4412",
+    "naca6409",
+    "s1223",
+    "s8035"
+]
 
 
 def evaluate_design(trial):
-    """ Optunaが呼び出す目的関数 """
+    """ Optunaが呼び出す目的関数 (5点定義バージョン) """
+    
+    # --- [修正] 設計変数を 3 -> 5 に増やす ---
     
     # 1. 翼型 (Categorical: 選択肢から選ぶ)
     airfoil_names = [
-        trial.suggest_categorical("airfoil_hub", AIRFOIL_CHOICES),
-        trial.suggest_categorical("airfoil_mid", AIRFOIL_CHOICES),
-        trial.suggest_categorical("airfoil_tip", AIRFOIL_CHOICES)
+        trial.suggest_categorical("airfoil_1_hub", AIRFOIL_CHOICES),
+        trial.suggest_categorical("airfoil_2_30R", AIRFOIL_CHOICES),
+        trial.suggest_categorical("airfoil_3_55R", AIRFOIL_CHOICES),
+        trial.suggest_categorical("airfoil_4_80R", AIRFOIL_CHOICES),
+        trial.suggest_categorical("airfoil_5_tip", AIRFOIL_CHOICES)
     ]
     
     # 2. 弦長 (Float: 範囲内の少数)
     chord_coords = [
-        trial.suggest_float("chord_hub", 0.003, 0.005), # 3mm ~ 5mm
-        trial.suggest_float("chord_mid", 0.003, 0.005),
-        trial.suggest_float("chord_tip", 0.002, 0.005)
+        trial.suggest_float("chord_1_hub", 0.003, 0.005), # 3mm ~ 5mm
+        trial.suggest_float("chord_2_30R", 0.003, 0.005),
+        trial.suggest_float("chord_3_55R", 0.003, 0.005),
+        trial.suggest_float("chord_4_80R", 0.002, 0.005),
+        trial.suggest_float("chord_5_tip", 0.002, 0.004) # 先端は細く
     ]
 
     # 3. ピッチ角 (Float: 範囲内の少数)
     pitch_coords_deg = [
-        trial.suggest_float("pitch_hub", 15.0, 35.0),
-        trial.suggest_float("pitch_mid", 10.0, 30.0),
-        trial.suggest_float("pitch_tip", 5.0, 25.0)
+        trial.suggest_float("pitch_1_hub", 15.0, 35.0),
+        trial.suggest_float("pitch_2_30R", 12.0, 30.0),
+        trial.suggest_float("pitch_3_55R", 10.0, 25.0),
+        trial.suggest_float("pitch_4_80R", 5.0, 20.0),
+        trial.suggest_float("pitch_5_tip", 5.0, 18.0)
     ]
+    # (※ピッチ角は一般的に先端に行くほど浅くなるため、探索範囲を絞っています)
     
+    # --- 性能評価 (ここから下は変更なし) ---
     prop = Propeller(
         hub_radius=HUB_RADIUS,
         tip_radius=TIP_RADIUS,
@@ -72,16 +102,11 @@ def evaluate_design(trial):
         num_elements=10 # 高速化
     )
 
-    # --- 制約条件の判定 ---
+    # --- 制約条件の判定 (変更なし) ---
     if P > TARGET_POWER_LIMIT:
-        # パワーオーバー。ペナルティ (超過したパワー分だけ推力を減点)
         return TARGET_THRUST_MIN - (P - TARGET_POWER_LIMIT) 
-
     if total_T < TARGET_THRUST_MIN:
-        # ホバリングできない。
         return total_T 
-        
-    # 制約を満たした解 (推力を最大化)
     return total_T
 
 # --- 実行 ---
@@ -89,17 +114,19 @@ if __name__ == "__main__":
     print("--- 🛠️  Step 4: Advanced Optimization (Optuna + Airfoil DB) ---")
     print(f"Target: Maximize Thrust @ {RPM} RPM (Hover)")
     print(f"Constraints: Power <= {TARGET_POWER_LIMIT} W, Thrust >= {TARGET_THRUST_MIN} N")
-    print(f"Optimizing: Pitch (3), Chord (3), Airfoil (3)")
+    # 🔽 [修正] 5点 x 3種類 = 15変数
+    print(f"Optimizing: Pitch (5), Chord (5), Airfoil (5) = 15 variables")
     print("--------------------------------------------------")
 
-    # ログレベルを設定し、試行ごとの詳細な出力を抑制
     optuna.logging.set_verbosity(optuna.logging.WARNING)
     
     study = optuna.create_study(direction="maximize")
     
-    print("Running Optuna (100 trials)...")
+    # 🔽 [修正] 変数が増えたため、試行回数を増やす
+    n_trials = 300 
+    print(f"Running Optuna ({n_trials} trials)...")
     start_time = time.time()
-    study.optimize(evaluate_design, n_trials=100)
+    study.optimize(evaluate_design, n_trials=n_trials)
     end_time = time.time()
 
     print(f"\nOptimization finished in {end_time - start_time:.2f} seconds.")
@@ -117,23 +144,29 @@ if __name__ == "__main__":
         else:
             print(f"    {key}: {value}")
             
-    # 最適解のパワーを再計算して確認
+    # --- [修正] 5点の結果を取得するために書き換え ---
     best_params_pitch = [
-        best_trial.params["pitch_hub"], 
-        best_trial.params["pitch_mid"], 
-        best_trial.params["pitch_tip"]
+        best_trial.params["pitch_1_hub"], 
+        best_trial.params["pitch_2_30R"],
+        best_trial.params["pitch_3_55R"],
+        best_trial.params["pitch_4_80R"],
+        best_trial.params["pitch_5_tip"]
     ]
     best_params_chord = [
-        best_trial.params["chord_hub"], 
-        best_trial.params["chord_mid"], 
-        best_trial.params["chord_tip"]
+        best_trial.params["chord_1_hub"], 
+        best_trial.params["chord_2_30R"],
+        best_trial.params["chord_3_55R"],
+        best_trial.params["chord_4_80R"],
+        best_trial.params["chord_5_tip"]
     ]
     best_params_airfoils = [
-        best_trial.params["airfoil_hub"], 
-        best_trial.params["airfoil_mid"], 
-        best_trial.params["airfoil_tip"]
+        best_trial.params["airfoil_1_hub"], 
+        best_trial.params["airfoil_2_30R"],
+        best_trial.params["airfoil_3_55R"],
+        best_trial.params["airfoil_4_80R"],
+        best_trial.params["airfoil_5_tip"]
     ]
-
+    
     prop_final = Propeller(
         hub_radius=HUB_RADIUS, tip_radius=TIP_RADIUS, num_blades=NUM_BLADES,
         r_coords=R_COORDS, pitch_coords_deg=np.array(best_params_pitch),
@@ -147,3 +180,4 @@ if __name__ == "__main__":
     print(f"    Thrust: {T_final:.4f} N")
     print(f"    Power:  {P_final:.2f} W (Constraint: <= {TARGET_POWER_LIMIT} W)")
     print(f"    g/W:    {(T_final / 9.81 * 1000) / P_final:.2f}")
+    
