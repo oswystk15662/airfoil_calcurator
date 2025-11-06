@@ -4,37 +4,24 @@ from scipy.optimize import fsolve
 from .geometry import Propeller
 from .losses import prandtl_loss_factor
 from .duct import calculate_wake_contraction
-# XFOILラッパーは不要なので削除
+# 🔽 [修正] 新しいデータベースファイルからインポート 🔽
+from airfoil_database_airfoiltools import get_airfoil_performance 
+
+# 実行が成功したことを確認するため、デバッグプリントを V4 に変更
+print("--- [DEBUG] Loading BEMT Solver (Database-driven, V4-AirfoilTools) ---")
 
 def solve_bemt(prop: Propeller, v_infinity: float, rpm: float,
                air_density: float = 1.225,
-               # --- [変更] XFOILの代わりに簡易空力モデルのパラメータを追加 ---
-               lift_slope_rad: float = 2 * np.pi * 0.9, # 揚力傾斜 (rad-1) ※2D理論値x0.9
-               zero_lift_aoa_deg: float = -2.0,      # ゼロ揚力角 (deg)
-               cd_profile: float = 0.02,              # 形状抗力係数 (Cd0)
-               # ----------------------------------------------------
+               kinematic_viscosity: float = 1.4607e-5, # Re計算のため
                num_elements: int = 20
                ):
     """
     BEMT(翼素運動量理論)ソルバーのメイン関数。
-    (低Re対応。XFOILの代わりに簡易空力モデルを使用)
-
-    Args:
-        (略)
-        lift_slope_rad (float): 揚力傾斜 (1/rad)
-        zero_lift_aoa_deg (float): ゼロ揚力角 (度)
-        cd_profile (float): 形状抗力係数 (Cd0)
-
-    Returns:
-        (total_thrust, total_fan_thrust, total_duct_thrust, total_torque, power, efficiency)
+    (airfoil_database を参照するモデル)
     """
     
-    omega = rpm * 2.0 * np.pi / 60.0 # RPMをrad/sに変換
+    omega = rpm * 2.0 * np.pi / 60.0 
     
-    # ゼロ揚力角をラジアンに変換
-    zero_lift_aoa_rad = np.radians(zero_lift_aoa_deg)
-    
-    # ダクト効果の計算
     k_squared = calculate_wake_contraction(prop)
     fan_thrust_fraction = 0.5 * k_squared 
     lip_factor = 1.0 - fan_thrust_fraction
@@ -47,9 +34,13 @@ def solve_bemt(prop: Propeller, v_infinity: float, rpm: float,
     total_torque_elements = 0.0
     
     for r in r_centers:
+        
         chord = prop.get_chord(r)
         pitch_rad = np.radians(prop.get_pitch_deg(r))
         sigma = (prop.num_blades * chord) / (2.0 * np.pi * r)
+        
+        # この要素で使用する翼型名を取得
+        airfoil_name = prop.get_airfoil_name(r)
         
         def residuals(x):
             v_i = x[0]
@@ -57,21 +48,17 @@ def solve_bemt(prop: Propeller, v_infinity: float, rpm: float,
             
             v_axial = v_infinity + v_i
             v_tangential = omega * r * (1.0 - a_prime)
-            
             phi_rad = np.arctan2(v_axial, v_tangential)
             W_sq = v_axial**2 + v_tangential**2
             
-            if W_sq < 1e-4:
-                return (1.0, 1.0) 
+            if W_sq < 1e-4: return (1.0, 1.0) 
 
-            # --- [変更] XFOILの代わりに空力モデルを使用 ---
             aoa_rad = pitch_rad - phi_rad
+            aoa_deg = np.degrees(aoa_rad)
             
-            # 簡易揚力モデル
-            cl = lift_slope_rad * (aoa_rad - zero_lift_aoa_rad)
-            # 簡易抗力モデル (形状抗力のみ)
-            cd = cd_profile
-            # --- [変更ここまで] ---
+            # データベースを呼び出す
+            reynolds = (np.sqrt(W_sq) * chord) / kinematic_viscosity
+            cl, cd, _ = get_airfoil_performance(airfoil_name, reynolds, aoa_deg)
             
             C_x = cl * np.cos(phi_rad) - cd * np.sin(phi_rad)
             C_y = cl * np.sin(phi_rad) + cd * np.cos(phi_rad)
@@ -84,8 +71,10 @@ def solve_bemt(prop: Propeller, v_infinity: float, rpm: float,
             a = v_i / v_infinity if v_infinity > 0.1 else 100.0
             a_threshold = 0.35
             
+            dT_total_mom_dr = 0.0
             if a > a_threshold: 
                 if v_infinity < 0.1: # ホバー
+                     # T = 2 * rho * dA * v_i^2 = 2 * rho * (2*pi*r*dr) * v_i^2
                      dT_total_mom_dr = 4.0 * np.pi * r * air_density * v_i**2 * F
                 else: # 前進飛行 (高推力)
                      dT_total_mom_dr = 4.0 * np.pi * r * air_density * v_axial * v_i * F
@@ -103,21 +92,17 @@ def solve_bemt(prop: Propeller, v_infinity: float, rpm: float,
             return (res_thrust, res_torque)
         
         try:
-            v_i_init = 5.0 # 初期誘導速度 (m/s)
+            v_i_init = 5.0
             a_prime_init = 0.01 
-            
             (v_i_solved, a_prime_solved), _, ier, _ = fsolve(
                 residuals, [v_i_init, a_prime_init], xtol=1e-5, maxfev=100, full_output=True
             )
-            
             if ier != 1: v_i_solved, a_prime_solved = 0.0, 0.0
         except Exception:
             v_i_solved, a_prime_solved = 0.0, 0.0
 
-        # --- 3. 収束した値で最終的な推力・トルクを計算 ---
         v_i_final = v_i_solved
         a_prime_final = np.clip(a_prime_solved, -1.0, 1.0) 
-        
         v_axial_final = v_infinity + v_i_final
         v_tan_final = omega * r * (1.0 - a_prime_final)
         phi_final = np.arctan2(v_axial_final, v_tan_final)
@@ -126,13 +111,13 @@ def solve_bemt(prop: Propeller, v_infinity: float, rpm: float,
         if W_sq_final < 1e-6:
             dT, dQ = 0.0, 0.0
         else:
-            # --- [変更] XFOILの代わりに空力モデルを使用 ---
             aoa_rad_final = pitch_rad - phi_final
-            cl_final = lift_slope_rad * (aoa_rad_final - zero_lift_aoa_rad)
-            cd_final = cd_profile
-            # --- [変更ここまで] ---
-                
-            C_x_final = cl_final * np.cos(phi_final) - cd_final * np.sin(phi_final)
+            aoa_deg_final = np.degrees(aoa_rad_final)
+            reynolds_final = (np.sqrt(W_sq_final) * chord) / kinematic_viscosity
+            
+            cl_final, cd_final, _ = get_airfoil_performance(airfoil_name, reynolds_final, aoa_deg_final)
+            
+            C_x_final = cl_final * np.cos(phi_final) - cd_final * np.sin(phi_final) 
             C_y_final = cl_final * np.sin(phi_final) + cd_final * np.cos(phi_final)
 
             dT = 0.5 * air_density * W_sq_final * (prop.num_blades * chord) * C_x_final * dr
@@ -141,6 +126,7 @@ def solve_bemt(prop: Propeller, v_infinity: float, rpm: float,
         total_fan_thrust_elements += dT
         total_torque_elements += dQ
         
+    # --- 4. 最終的な性能を計算 ---
     total_fan_thrust = total_fan_thrust_elements
     total_torque = total_torque_elements
     power = total_torque * omega
