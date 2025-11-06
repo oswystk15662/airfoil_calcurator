@@ -20,13 +20,15 @@ def generate_xfoil_input_single_aoa(filepath: str, reynolds: float, aoa: float) 
     OPER
     VISC {reynolds}
     PACC
-    output.pol  # 出力ファイル名（ダミー、実際は標準出力をパースする）
+    output.pol
     
     ASEQ {aoa} {aoa} 1
     
     
     QUIT
     """
+    # output.pol : 出力ファイル名（ダミー、実際は標準出力をパースする）
+
     # XFOILは"空行"（Enterキー）をコマンド区切りとして多用するため、
     # ヒアドキュメントの改行が重要になる
     return "\n".join([line.strip() for line in commands.splitlines()])
