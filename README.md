@@ -82,6 +82,7 @@ uv add numpy scipy pandas optuna
 
 **【重要】外部プログラム:**
 Windows版の `xfoil.exe` (v6.99推奨) をダウンロードし、プロジェクトのルートディレクトリ（`main_optimizer.py` と同じ場所）に配置する必要があります。
+cloneすればそのまま入ってますが、何らかの理由で動かなかったら自分で入れてください
 
 ## 🚀 使い方 (Workflow)
 

@@ -1,0 +1,61 @@
+--- 🛠️  Step 5: Integrated Duct + Propeller Optimization ---
+Target: Maximize Thrust @ 15000.0 RPM (Hover)
+Constraints: Power <= 3.26 W, Thrust >= 0.196 N
+Optimizing: Blade(2-5), Hub(10-30%), Duct Length, Duct Lip
+  + Pitch/Chord (Bézier, 5 ctrl pts)
+  + Airfoils (3 ctrl pts)
+Available Airfoils (20): ['ah-7-47-6', 'aqilla', 'clearky', 'dae11', 'dae21', 'dae31', 'e193', 'e423', 'e61', 'fx60-100', 'fx63-137', 'geminism', 'gm15', 'goe795', 'mh32', 'naca4412', 'naca6409', 's1223', 's4083', 's8035']
+--------------------------------------------------
+Running Optuna (500 trials)...
+
+Optimization finished in 16.81 seconds.
+--------------------------------------------------
+✅ Best solution found:
+  Best Thrust: 0.5191 N
+
+  Optimal Parameters (Global):
+    num_blades: 5
+    hub_ratio: 0.213
+    duct_length: 15.6 mm
+    duct_lip_radius: 7.0 mm
+
+  Optimal Control Points (Airfoil):
+    ['gm15', 'ah-7-47-6', 'ah-7-47-6']
+
+  Optimal Control Points (Pitch, deg):
+    [30.78, 21.14, 13.91, 11.47, 9.84]
+
+  Optimal Control Points (Chord, mm):
+    [3.3, 4.7, 4.0, 2.8, 2.8]
+
+  Final Performance Check (using smoothed curves):
+    Total Thrust: 0.5191 N
+    (Fan Thrust:  0.2596 N)
+    (Duct Thrust: 0.2596 N)
+    Power:        3.21 W (Constraint: <= 3.26 W)
+    g/W:          16.50
+
+--- CAD Data (BEMT Points Definition) ---
+    (Total 20 points, i=0 is Hub, i=19 is Tip)
+    i | Radius (m) | Pitch (deg) | Chord (mm) | Nearest Airfoil
+    --|------------|-------------|------------|----------------
+     0 |   0.0081   |     30.775 |      3.3   | gm15
+     1 |   0.0097   |     28.789 |      3.6   | gm15
+     2 |   0.0112   |     26.890 |      3.8   | gm15
+     3 |   0.0128   |     25.085 |      3.9   | gm15
+     4 |   0.0144   |     23.379 |      4.0   | gm15
+     5 |   0.0160   |     21.776 |      4.0   | ah-7-47-6
+     6 |   0.0175   |     20.281 |      4.0   | ah-7-47-6
+     7 |   0.0191   |     18.894 |      4.0   | ah-7-47-6
+     8 |   0.0207   |     17.617 |      3.9   | ah-7-47-6
+     9 |   0.0223   |     16.449 |      3.8   | ah-7-47-6
+    10 |   0.0238   |     15.389 |      3.7   | ah-7-47-6
+    11 |   0.0254   |     14.434 |      3.6   | ah-7-47-6
+    12 |   0.0270   |     13.579 |      3.4   | ah-7-47-6
+    13 |   0.0286   |     12.820 |      3.3   | ah-7-47-6
+    14 |   0.0301   |     12.150 |      3.2   | ah-7-47-6
+    15 |   0.0317   |     11.562 |      3.1   | ah-7-47-6
+    16 |   0.0333   |     11.048 |      3.0   | ah-7-47-6
+    17 |   0.0349   |     10.597 |      2.9   | ah-7-47-6
+    18 |   0.0364   |     10.198 |      2.8   | ah-7-47-6
+    19 |   0.0380   |      9.839 |      2.8   | ah-7-47-6
