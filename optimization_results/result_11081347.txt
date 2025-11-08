@@ -1,0 +1,57 @@
+--- 🛠️  Step 4: Advanced Optimization (Bézier Curve Control) ---
+Target: Maximize Thrust @ 15000.0 RPM (Hover)
+Constraints: Power <= 3.26 W, Thrust >= 0.196 N
+Optimizing: Blade(2-5), Hub(10-30%)
+  + Pitch/Chord (Bézier, 5 ctrl pts)
+  + Airfoils (3 ctrl pts)
+Available Airfoils (20): ['ah-7-47-6', 'aqilla', 'clearky', 'dae11', 'dae21', 'dae31', 'e193', 'e423', 'e61', 'fx60-100', 'fx63-137', 'geminism', 'gm15', 'goe795', 'mh32', 'naca4412', 'naca6409', 's1223', 's4083', 's8035']
+--------------------------------------------------
+Running Optuna (500 trials)...
+
+Optimization finished in 25.63 seconds.
+--------------------------------------------------
+✅ Best solution found:
+  Best Thrust: 0.2877 N
+
+  Optimal Parameters (Global):
+    num_blades: 4
+    hub_ratio: 0.149
+
+  Optimal Control Points (Airfoil):
+    ['ah-7-47-6', 'ah-7-47-6', 'gm15']
+
+  Optimal Control Points (Pitch, deg):
+    [34.0, 26.83, 10.31, 19.23, 7.66]
+
+  Optimal Control Points (Chord, mm):
+    [4.9, 4.6, 4.4, 4.8, 3.0]
+
+  Final Performance Check (using smoothed curves):
+    Thrust: 0.2877 N
+    Power:  3.25 W (Constraint: <= 3.26 W)
+    g/W:    9.02
+
+--- CAD Data (BEMT Points Definition) ---
+    (Total 20 points, i=0 is Hub, i=19 is Tip)
+    i | Radius (m) | Pitch (deg) | Chord (mm) | Nearest Airfoil
+    --|------------|-------------|------------|----------------
+     0 |   0.0057   |     34.001 |      4.9   | ah-7-47-6
+     1 |   0.0074   |     32.355 |      4.8   | ah-7-47-6
+     2 |   0.0091   |     30.511 |      4.8   | ah-7-47-6
+     3 |   0.0108   |     28.570 |      4.7   | ah-7-47-6
+     4 |   0.0125   |     26.614 |      4.7   | ah-7-47-6
+     5 |   0.0142   |     24.715 |      4.6   | ah-7-47-6
+     6 |   0.0159   |     22.927 |      4.6   | ah-7-47-6
+     7 |   0.0176   |     21.289 |      4.6   | ah-7-47-6
+     8 |   0.0193   |     19.827 |      4.5   | ah-7-47-6
+     9 |   0.0210   |     18.552 |      4.5   | ah-7-47-6
+    10 |   0.0227   |     17.458 |      4.5   | ah-7-47-6
+    11 |   0.0244   |     16.526 |      4.4   | ah-7-47-6
+    12 |   0.0261   |     15.722 |      4.4   | ah-7-47-6
+    13 |   0.0278   |     14.996 |      4.3   | ah-7-47-6
+    14 |   0.0295   |     14.284 |      4.2   | ah-7-47-6
+    15 |   0.0312   |     13.508 |      4.0   | gm15
+    16 |   0.0329   |     12.573 |      3.8   | gm15
+    17 |   0.0346   |     11.371 |      3.6   | gm15
+    18 |   0.0363   |      9.778 |      3.3   | gm15
+    19 |   0.0380   |      7.656 |      3.0   | gm15

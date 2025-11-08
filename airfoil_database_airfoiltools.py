@@ -142,5 +142,18 @@ def get_airfoil_performance(airfoil_name: str, reynolds: float, aoa_deg: float):
 
     return cl, cd, 0.0 # (cm は 0.0 を返す)
 
+# 🔽 [新規追加] Optunaから利用可能な翼型リストを取得する関数 🔽
+def get_available_airfoils():
+    """
+    データベースのロードに成功した翼型のリストを返す。
+    """
+    if not _airfoil_interpolators:
+        # このスクリプトがインポートされた時点で _load_airfoil_data() が
+        # 実行されているはずだが、念のため呼び出す
+        _load_airfoil_data()
+        
+    return list(_airfoil_interpolators.keys())
+# 🔼 [新規追加] 🔼
+
 # --- 起動時にデータベースを初期化 ---
 _load_airfoil_data()

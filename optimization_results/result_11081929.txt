@@ -1,0 +1,12 @@
+--- 🛠️  Step 4: Advanced Optimization (Optuna + Airfoil DB) ---
+Target: Maximize Thrust @ 15000.0 RPM (Hover)
+Constraints: Power <= 3.26 W, Thrust >= 0.196 N
+Optimizing: Blade(2-5), Hub(10-30%), and 20 points for Pitch, Chord(step=0.1mm), Airfoil
+Available Airfoils (11): ['dae11', 'dae21', 'dae31', 'e61', 'geminism', 'goe795', 'mh32', 'naca4412', 'naca6409', 's1223', 's8035']
+--------------------------------------------------
+Running Optuna (500 trials)...
+
+Optimization finished in 42.64 seconds.
+--------------------------------------------------
+❌ Optimization FAILED to meet minimum thrust constraint.
+   Best attempt achieved: 0.1941 N

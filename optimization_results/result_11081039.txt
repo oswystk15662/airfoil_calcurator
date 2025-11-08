@@ -1,0 +1,46 @@
+--- 🛠️  Step 4: Advanced Optimization (Optuna + Airfoil DB) ---
+Target: Maximize Thrust @ 15000.0 RPM (Hover)
+Constraints: Power <= 3.26 W, Thrust >= 0.196 N
+Optimizing: Blade(2-5), Hub(10-30%), and 20 points for Pitch, Chord(step=0.1mm), Airfoil
+Available Airfoils (11): ['dae11', 'dae21', 'dae31', 'e61', 'geminism', 'goe795', 'mh32', 'naca4412', 'naca6409', 's1223', 's8035']
+--------------------------------------------------
+Running Optuna (500 trials)...
+
+Optimization finished in 37.53 seconds.
+--------------------------------------------------
+✅ Best solution found:
+  Best Thrust: 0.2046 N
+
+  Optimal Parameters (Global):
+    num_blades: 3
+    hub_ratio: 0.132
+
+  Optimal Parameters (Blade Definition):
+    (i=0 is Hub, i=19 is Tip)
+    i | Radius (m) | Pitch (deg) | Chord (mm) | Airfoil
+    --|------------|-------------|------------|----------
+    0 |   0.0050   |     16.688 |      4.4   | e61
+    1 |   0.0067   |     10.452 |      2.5   | dae31
+    2 |   0.0085   |     18.328 |      2.9   | e61
+    3 |   0.0102   |     27.088 |      3.0   | naca6409
+    4 |   0.0119   |     15.493 |      2.1   | goe795
+    5 |   0.0137   |     27.621 |      4.1   | geminism
+    6 |   0.0154   |     11.371 |      2.1   | e61
+    7 |   0.0172   |     29.938 |      3.9   | goe795
+    8 |   0.0189   |     21.980 |      4.7   | dae11
+    9 |   0.0206   |     20.458 |      4.5   | dae31
+    10 |   0.0224   |     26.480 |      3.6   | dae31
+    11 |   0.0241   |     28.316 |      5.0   | dae21
+    12 |   0.0258   |     26.230 |      3.8   | dae21
+    13 |   0.0276   |     20.886 |      4.8   | dae21
+    14 |   0.0293   |     20.514 |      2.8   | naca4412
+    15 |   0.0311   |     12.698 |      3.6   | goe795
+    16 |   0.0328   |     22.166 |      4.0   | dae31
+    17 |   0.0345   |     27.993 |      4.4   | s1223
+    18 |   0.0363   |     13.042 |      2.5   | naca6409
+    19 |   0.0380   |     13.372 |      3.9   | e61
+
+  Final Performance Check:
+    Thrust: 0.1648 N
+    Power:  3.27 W (Constraint: <= 3.26 W)
+    g/W:    5.14

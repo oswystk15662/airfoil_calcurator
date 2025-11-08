@@ -1,0 +1,46 @@
+--- 🛠️  Step 4: Advanced Optimization (Optuna + Airfoil DB) ---
+Target: Maximize Thrust @ 15000.0 RPM (Hover)
+Constraints: Power <= 3.26 W, Thrust >= 0.196 N
+Optimizing: Blade(2-5), Hub(10-30%), and 20 points for Pitch, Chord(step=0.1mm), Airfoil
+Available Airfoils (11): ['dae11', 'dae21', 'dae31', 'e61', 'geminism', 'goe795', 'mh32', 'naca4412', 'naca6409', 's1223', 's8035']
+--------------------------------------------------
+Running Optuna (500 trials)...
+
+Optimization finished in 38.71 seconds.
+--------------------------------------------------
+✅ Best solution found:
+  Best Thrust: 0.2300 N
+
+  Optimal Parameters (Global):
+    num_blades: 4
+    hub_ratio: 0.227
+
+  Optimal Parameters (Blade Definition):
+    (i=0 is Hub, i=19 is Tip)
+    i | Radius (m) | Pitch (deg) | Chord (mm) | Airfoil
+    --|------------|-------------|------------|----------
+    0 |   0.0086   |     23.349 |      4.7   | naca6409
+    1 |   0.0102   |     16.028 |      3.6   | naca6409
+    2 |   0.0117   |     19.795 |      2.4   | naca6409
+    3 |   0.0133   |     26.929 |      3.5   | goe795
+    4 |   0.0148   |     29.031 |      5.0   | s1223
+    5 |   0.0164   |     11.082 |      4.4   | dae21
+    6 |   0.0179   |     11.713 |      2.0   | dae31
+    7 |   0.0195   |     19.330 |      4.0   | s8035
+    8 |   0.0210   |     25.973 |      3.3   | geminism
+    9 |   0.0225   |     18.877 |      2.6   | naca6409
+    10 |   0.0241   |     15.515 |      4.3   | goe795
+    11 |   0.0256   |     14.121 |      2.3   | geminism
+    12 |   0.0272   |     20.008 |      3.7   | naca6409
+    13 |   0.0287   |     17.774 |      2.1   | e61
+    14 |   0.0303   |     13.155 |      5.0   | goe795
+    15 |   0.0318   |     21.953 |      4.4   | goe795
+    16 |   0.0334   |     13.244 |      3.4   | naca6409
+    17 |   0.0349   |     21.455 |      4.6   | naca4412
+    18 |   0.0365   |     20.386 |      3.2   | naca6409
+    19 |   0.0380   |      9.284 |      2.6   | dae21
+
+  Final Performance Check:
+    Thrust: 0.2020 N
+    Power:  3.38 W (Constraint: <= 3.26 W)
+    g/W:    6.09

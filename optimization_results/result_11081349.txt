@@ -1,0 +1,57 @@
+--- 🛠️  Step 4: Advanced Optimization (Bézier Curve Control) ---
+Target: Maximize Thrust @ 15000.0 RPM (Hover)
+Constraints: Power <= 3.26 W, Thrust >= 0.196 N
+Optimizing: Blade(2-5), Hub(10-30%)
+  + Pitch/Chord (Bézier, 5 ctrl pts)
+  + Airfoils (3 ctrl pts)
+Available Airfoils (20): ['ah-7-47-6', 'aqilla', 'clearky', 'dae11', 'dae21', 'dae31', 'e193', 'e423', 'e61', 'fx60-100', 'fx63-137', 'geminism', 'gm15', 'goe795', 'mh32', 'naca4412', 'naca6409', 's1223', 's4083', 's8035']
+--------------------------------------------------
+Running Optuna (500 trials)...
+
+Optimization finished in 16.21 seconds.
+--------------------------------------------------
+✅ Best solution found:
+  Best Thrust: 0.2962 N
+
+  Optimal Parameters (Global):
+    num_blades: 5
+    hub_ratio: 0.206
+
+  Optimal Control Points (Airfoil):
+    ['mh32', 'gm15', 'gm15']
+
+  Optimal Control Points (Pitch, deg):
+    [23.5, 20.33, 13.84, 11.14, 12.28]
+
+  Optimal Control Points (Chord, mm):
+    [3.8, 4.3, 3.6, 5.0, 2.9]
+
+  Final Performance Check (using smoothed curves):
+    Thrust: 0.2962 N
+    Power:  3.25 W (Constraint: <= 3.26 W)
+    g/W:    9.30
+
+--- CAD Data (BEMT Points Definition) ---
+    (Total 20 points, i=0 is Hub, i=19 is Tip)
+    i | Radius (m) | Pitch (deg) | Chord (mm) | Nearest Airfoil
+    --|------------|-------------|------------|----------------
+     0 |   0.0078   |     23.502 |      3.8   | mh32
+     1 |   0.0094   |     22.784 |      3.9   | mh32
+     2 |   0.0110   |     21.979 |      3.9   | mh32
+     3 |   0.0126   |     21.112 |      4.0   | mh32
+     4 |   0.0142   |     20.202 |      4.0   | mh32
+     5 |   0.0158   |     19.270 |      4.0   | gm15
+     6 |   0.0174   |     18.337 |      4.0   | gm15
+     7 |   0.0189   |     17.419 |      4.1   | gm15
+     8 |   0.0205   |     16.532 |      4.1   | gm15
+     9 |   0.0221   |     15.693 |      4.1   | gm15
+    10 |   0.0237   |     14.914 |      4.1   | gm15
+    11 |   0.0253   |     14.208 |      4.1   | gm15
+    12 |   0.0269   |     13.588 |      4.1   | gm15
+    13 |   0.0285   |     13.061 |      4.1   | gm15
+    14 |   0.0301   |     12.638 |      4.0   | gm15
+    15 |   0.0316   |     12.325 |      3.9   | gm15
+    16 |   0.0332   |     12.129 |      3.8   | gm15
+    17 |   0.0348   |     12.054 |      3.6   | gm15
+    18 |   0.0364   |     12.104 |      3.3   | gm15
+    19 |   0.0380   |     12.280 |      2.9   | gm15

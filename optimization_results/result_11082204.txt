@@ -1,0 +1,46 @@
+--- 🛠️  Step 4: Advanced Optimization (Optuna + Airfoil DB) ---
+Target: Maximize Thrust @ 15000.0 RPM (Hover)
+Constraints: Power <= 3.26 W, Thrust >= 0.196 N
+Optimizing: Blade(2-5), Hub(10-30%), and 20 points for Pitch, Chord(step=0.1mm), Airfoil
+Available Airfoils (20): ['ah-7-47-6', 'aqilla', 'clearky', 'dae11', 'dae21', 'dae31', 'e193', 'e423', 'e61', 'fx60-100', 'fx63-137', 'geminism', 'gm15', 'goe795', 'mh32', 'naca4412', 'naca6409', 's1223', 's4083', 's8035']
+--------------------------------------------------
+Running Optuna (500 trials)...
+
+Optimization finished in 53.12 seconds.
+--------------------------------------------------
+✅ Best solution found:
+  Best Thrust: 0.2336 N
+
+  Optimal Parameters (Global):
+    num_blades: 4
+    hub_ratio: 0.162
+
+  Optimal Parameters (Blade Definition):
+    (i=0 is Hub, i=19 is Tip)
+    i | Radius (m) | Pitch (deg) | Chord (mm) | Airfoil
+    --|------------|-------------|------------|----------
+    0 |   0.0062   |     18.921 |      3.5   | s4083
+    1 |   0.0078   |     24.194 |      3.2   | aqilla
+    2 |   0.0095   |     17.060 |      2.6   | mh32
+    3 |   0.0112   |     10.307 |      3.3   | e61
+    4 |   0.0129   |     13.832 |      4.7   | fx63-137
+    5 |   0.0145   |     27.399 |      4.5   | mh32
+    6 |   0.0162   |     13.908 |      4.0   | ah-7-47-6
+    7 |   0.0179   |     17.247 |      4.8   | fx60-100
+    8 |   0.0196   |     27.494 |      4.1   | naca6409
+    9 |   0.0212   |     21.104 |      5.0   | fx63-137
+    10 |   0.0229   |     12.383 |      5.0   | e423
+    11 |   0.0246   |     23.254 |      4.0   | fx63-137
+    12 |   0.0263   |     12.374 |      2.8   | ah-7-47-6
+    13 |   0.0279   |     21.031 |      4.2   | s8035
+    14 |   0.0296   |     16.703 |      3.8   | dae21
+    15 |   0.0313   |     12.405 |      4.9   | gm15
+    16 |   0.0330   |     24.508 |      2.5   | naca4412
+    17 |   0.0346   |     15.728 |      2.0   | aqilla
+    18 |   0.0363   |     10.273 |      2.1   | dae31
+    19 |   0.0380   |     12.660 |      3.3   | ah-7-47-6
+
+  Final Performance Check:
+    Thrust: 0.2336 N
+    Power:  3.18 W (Constraint: <= 3.26 W)
+    g/W:    7.50
