@@ -48,13 +48,19 @@ def _load_airfoil_data():
             if airfoil_name not in airfoils_data:
                 airfoils_data[airfoil_name] = {}
                 
-            # --- [修正点 2] ---
-            # CSVを読み込むが、中身が空でないかチェック
+            # --- [修正点] ---
+            # CSVを読み込む
             df = pd.read_csv(f_path)
+            
+            # 必須カラム 'AoA' があるかチェック (これが今回のエラー原因)
+            if 'AoA' not in df.columns:
+                # print(f"Info: Skipping invalid CSV (No 'AoA' column): {filename}")
+                continue
+
             if df.empty or len(df) < 2:
-                # print(f"Info: Skipping empty/invalid file: {filename}")
-                continue # データが少なすぎるファイルは無視
-            # --- [修正点 2ここまで] ---
+                # print(f"Info: Skipping empty/short file: {filename}")
+                continue 
+            # --- [修正点ここまで] ---
 
             airfoils_data[airfoil_name][re] = df
             

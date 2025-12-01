@@ -158,10 +158,13 @@ if __name__ == "__main__":
     study = optuna.create_study(direction="maximize")
     
     # 制御点(13) + グローバル(2) + ダクト(2) = 17変数
-    n_trials = 500 
+    n_trials = 2000 
     log_and_print(f"Running Optuna ({n_trials} trials)...")
     start_time = time.time()
-    study.optimize(evaluate_design, n_trials=n_trials)
+    
+    # [修正] n_jobs=-1 で全CPUコアを使って並列実行
+    study.optimize(evaluate_design, n_trials=n_trials, n_jobs=-1)
+    
     end_time = time.time()
 
     log_and_print(f"\nOptimization finished in {end_time - start_time:.2f} seconds.")
@@ -255,7 +258,7 @@ if __name__ == "__main__":
             log_and_print(f"    {i:2d} |   {r_coords_bemt[i]:.4f}   |   {pitch_distribution[i]:8.3f} |   {chord_distribution[i]*1000:6.1f}   | {airfoil_names_final[i]}")
 
     # --- ファイルへの書き込み ---
-    timestamp = datetime.now().strftime("%m%d%H%M")
+    timestamp = datetime.now().strftime("%m%d%H%M%S")
     filename = f"./optimization_results/result_{timestamp}.txt"
     try:
         with open(filename, 'w', encoding='utf-8') as f:

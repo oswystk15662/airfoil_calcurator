@@ -1,42 +1,70 @@
 # xfoil_wrapper/utils.py
 import os
-import re
-import pandas as pd # ◀ pandasをインポート
+import pandas as pd
 
-AIRFOIL_DIR = "./xfoil_wrapper/airfoils/" # (これはもう使わないかもしれない)
-
-# ... (既存の find_airfoil_file, generate_xfoil_input_single_aoa, parse_xfoil_output_single は残してOK) ...
-
-
-# ----------------------------------------------------
-# 🔽 [新規追加] XFOILのポーラー出力ファイルをパースする関数 🔽
-# ----------------------------------------------------
 def parse_xfoil_polar_file(filepath: str):
     """
-    XFOILが PACC で保存した .pol ファイル (実体はテキスト) を読み取り、
-    クリーンな CSV ファイルとして上書き保存する。
+    XFOILが PACC で保存した .pol ファイルを読み取り、
+    クリーンな CSV ファイル (AoA, CL, CD) として上書き保存する。
+    ヘッダー行数に依存せず、数値データのみを抽出するロバストな実装。
     """
     try:
+        # ファイルが存在しない場合は空のCSVを作成して終了
+        if not os.path.exists(filepath):
+            _create_empty_csv(filepath)
+            return
+
         with open(filepath, 'r') as f:
             lines = f.readlines()
         
-        # XFOILの出力はヘッダーが12行ある
-        header_lines = 12
-        data_lines = lines[header_lines:]
+        valid_data = []
         
-        # スペース区切りのデータを読み込む
-        data = [line.strip().split() for line in data_lines]
+        for line in lines:
+            parts = line.strip().split()
+            
+            # データ行は通常、空白区切りで数値が並んでいる
+            # 少なくとも3列 (alpha, CL, CD) 必要
+            if len(parts) < 3:
+                continue
+                
+            try:
+                # 最初の3つが数値に変換できるか試す
+                # (ヘッダー行や区切り線はここで ValueError になりスキップされる)
+                aoa = float(parts[0])
+                cl = float(parts[1])
+                cd = float(parts[2])
+                
+                valid_data.append([aoa, cl, cd])
+            except ValueError:
+                continue
+
+        # データが見つからなかった場合でも、ヘッダー付きの空ファイルにする
+        if not valid_data:
+            _create_empty_csv(filepath)
+            return
+
+        # DataFrame作成
+        df = pd.DataFrame(valid_data, columns=['AoA', 'CL', 'CD'])
         
-        # pandas DataFrameに変換
-        df = pd.DataFrame(data, columns=['AoA', 'CL', 'CD', 'CDp', 'CM', 'Top_Xtr', 'Bot_Xtr'])
+        # 重複データの削除 (念のため)
+        df = df.drop_duplicates(subset=['AoA'])
         
-        # 必要な列だけ（AoA, CL, CD）を抽出し、数値型に変換
-        df_clean = df[['AoA', 'CL', 'CD']].astype(float)
-        
-        # 元のファイルにクリーンなCSVとして上書き保存
-        df_clean.to_csv(filepath, index=False)
+        # CSVとして保存
+        df.to_csv(filepath, index=False)
         
     except Exception as e:
         print(f"Error parsing XFOIL output file {filepath}: {e}")
-        # パースに失敗したら空のファイルを作成
-        pd.DataFrame(columns=['AoA', 'CL', 'CD']).to_csv(filepath, index=False)
+        # エラー時も安全のため空のCSVを作成
+        _create_empty_csv(filepath)
+
+def _create_empty_csv(filepath):
+    """ヘッダーのみの空CSVを作成するヘルパー関数"""
+    try:
+        with open(filepath, 'w') as f:
+            f.write("AoA,CL,CD\n")
+    except:
+        pass
+
+# (以下の関数は使用していませんが、互換性のために残してもOKです)
+def find_airfoil_file(airfoil_name: str) -> str | None:
+    return None # ダミー実装
