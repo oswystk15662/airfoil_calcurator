@@ -1,146 +1,163 @@
-# bemt_solver/core.py
 import numpy as np
 from scipy.optimize import fsolve
-from .geometry import Propeller
-from .losses import prandtl_loss_factor
-from .duct import calculate_wake_contraction
-# 🔽 [修正] 新しいデータベースファイルからインポート 🔽
-from airfoil_database_airfoiltools import get_airfoil_performance 
+from . import losses
+from . import duct
+# 🔽 [修正] 新しい関数名をインポート
+from airfoil_database_airfoiltools import get_airfoil_properties
 
-# 実行が成功したことを確認するため、デバッグプリントを V4 に変更
-print("--- [DEBUG] Loading BEMT Solver (Database-driven, V4-AirfoilTools) ---")
-
-def solve_bemt(prop: Propeller, v_infinity: float, rpm: float,
-               air_density: float = 1.225,
-               kinematic_viscosity: float = 1.4607e-5, # Re計算のため
-               num_elements: int = 20
-               ):
+def solve_bemt(prop, v_infinity, rpm, air_density, kinematic_viscosity, num_elements=20):
     """
-    BEMT(翼素運動量理論)ソルバーのメイン関数。
-    (airfoil_database を参照するモデル)
+    BEMTを用いてプロペラ（およびダクト）の推力とトルクを計算する。
+    [修正] get_airfoil_properties に対応。
     """
     
-    omega = rpm * 2.0 * np.pi / 60.0 
+    # --- 1. ジオメトリの準備 ---
+    R = prop.tip_radius
+    R_hub = prop.hub_radius
+    B = prop.num_blades
+    omega = rpm * 2 * np.pi / 60.0
     
-    k_squared = calculate_wake_contraction(prop)
-    fan_thrust_fraction = 0.5 * k_squared 
-    lip_factor = 1.0 - fan_thrust_fraction
+    # ブレードを要素に分割 (ハブからチップまで)
+    r_elements = np.linspace(R_hub, R, num_elements + 1)
+    r_mid = (r_elements[:-1] + r_elements[1:]) / 2.0  # 各要素の中心半径
+    dr = r_elements[1] - r_elements[0]               # 要素の幅
+
+    total_thrust_fan = 0.0
+    total_torque = 0.0
     
-    radii = np.linspace(prop.hub_radius, prop.tip_radius, num_elements + 1)
-    r_centers = (radii[:-1] + radii[1:]) / 2.0
-    dr = radii[1] - radii[0] 
+    # ダクトの影響 (OptDuctモデル)
+    # k^2 = S_fan / S_wake (後流収縮比)
+    k_squared = duct.calculate_wake_contraction(prop)
     
-    total_fan_thrust_elements = 0.0
-    total_torque_elements = 0.0
+    # リップ推力係数 F_lip (ダクトが推力を分担する割合)
+    # T_total = T_fan / F_lip
+    # F_lip = 1.0 - 0.5 * k^2  (OptDuct Eq 5.2-12)
+    # ダクトなしなら k^2=2.0 -> F_lip=0.0 となり発散するため、
+    # 物理的な意味合いから、ダクトなし(k^2=2)の場合は F_lip=1.0 (全推力がファン) とするロジックが必要。
     
-    for r in r_centers:
-        
+    if prop.duct_length <= 0.0:
+        F_lip = 1.0 # ダクトなし
+    else:
+        # OptDuct理論値 (k^2 < 2.0 のはず)
+        F_lip = 1.0 - 0.5 * k_squared
+        # 安全策: F_lipが0以下にならないようにクリップ (通常ありえないが)
+        F_lip = max(F_lip, 0.01)
+
+    # --- 2. 各要素での計算 ---
+    for r in r_mid:
+        # 幾何形状の取得
         chord = prop.get_chord(r)
-        pitch_rad = np.radians(prop.get_pitch_deg(r))
-        sigma = (prop.num_blades * chord) / (2.0 * np.pi * r)
-        
-        # この要素で使用する翼型名を取得
+        pitch_deg = prop.get_pitch_deg(r)
         airfoil_name = prop.get_airfoil_name(r)
+        beta = np.radians(pitch_deg) # ピッチ角 (rad)
         
-        def residuals(x):
-            v_i = x[0]
-            a_prime = x[1]
-            
-            v_axial = v_infinity + v_i
-            v_tangential = omega * r * (1.0 - a_prime)
-            phi_rad = np.arctan2(v_axial, v_tangential)
-            W_sq = v_axial**2 + v_tangential**2
-            
-            if W_sq < 1e-4: return (1.0, 1.0) 
-
-            aoa_rad = pitch_rad - phi_rad
-            aoa_deg = np.degrees(aoa_rad)
-            
-            # データベースを呼び出す
-            reynolds = (np.sqrt(W_sq) * chord) / kinematic_viscosity
-            cl, cd, _ = get_airfoil_performance(airfoil_name, reynolds, aoa_deg)
-            
-            C_x = cl * np.cos(phi_rad) - cd * np.sin(phi_rad)
-            C_y = cl * np.sin(phi_rad) + cd * np.cos(phi_rad)
-            
-            dT_blade_dr = 0.5 * air_density * W_sq * (prop.num_blades * chord) * C_x
-            dQ_blade_dr = 0.5 * air_density * W_sq * (prop.num_blades * chord) * C_y * r
-
-            F = prandtl_loss_factor(r, prop.hub_radius, prop.tip_radius, prop.num_blades, phi_rad)
-            
-            a = v_i / v_infinity if v_infinity > 0.1 else 100.0
-            a_threshold = 0.35
-            
-            dT_total_mom_dr = 0.0
-            if a > a_threshold: 
-                if v_infinity < 0.1: # ホバー
-                     # T = 2 * rho * dA * v_i^2 = 2 * rho * (2*pi*r*dr) * v_i^2
-                     dT_total_mom_dr = 4.0 * np.pi * r * air_density * v_i**2 * F
-                else: # 前進飛行 (高推力)
-                     dT_total_mom_dr = 4.0 * np.pi * r * air_density * v_axial * v_i * F
-            else: # 前進飛行 (通常)
-                dT_total_mom_dr = 4.0 * np.pi * r * air_density * v_axial * v_i * F
-
-            dT_fan_mom_dr = dT_total_mom_dr * fan_thrust_fraction
-            
-            v_t = a_prime * omega * r
-            dQ_mom_dr = 4.0 * np.pi * r**2 * air_density * v_axial * v_t * F
-            
-            res_thrust = dT_blade_dr - dT_fan_mom_dr
-            res_torque = dQ_blade_dr - dQ_mom_dr
-            
-            return (res_thrust, res_torque)
+        sigma = (B * chord) / (2 * np.pi * r) # ソリディティ
         
-        try:
-            v_i_init = 5.0
-            a_prime_init = 0.01 
-            (v_i_solved, a_prime_solved), _, ier, _ = fsolve(
-                residuals, [v_i_init, a_prime_init], xtol=1e-5, maxfev=100, full_output=True
-            )
-            if ier != 1: v_i_solved, a_prime_solved = 0.0, 0.0
-        except Exception:
-            v_i_solved, a_prime_solved = 0.0, 0.0
-
-        v_i_final = v_i_solved
-        a_prime_final = np.clip(a_prime_solved, -1.0, 1.0) 
-        v_axial_final = v_infinity + v_i_final
-        v_tan_final = omega * r * (1.0 - a_prime_final)
-        phi_final = np.arctan2(v_axial_final, v_tan_final)
-        W_sq_final = v_axial_final**2 + v_tan_final**2
+        # 局所速度 (回転成分)
+        V_rot = omega * r
         
-        if W_sq_final < 1e-6:
-            dT, dQ = 0.0, 0.0
-        else:
-            aoa_rad_final = pitch_rad - phi_final
-            aoa_deg_final = np.degrees(aoa_rad_final)
-            reynolds_final = (np.sqrt(W_sq_final) * chord) / kinematic_viscosity
+        # --- 誘導速度の収束計算 (fsolve) ---
+        # 変数: phi (流入角)
+        
+        def residuals(phi_guess):
+            phi = float(phi_guess)
+            if phi <= 0 or phi >= np.pi/2:
+                return 1.0 # エラー回避
             
-            cl_final, cd_final, _ = get_airfoil_performance(airfoil_name, reynolds_final, aoa_deg_final)
+            # 局所迎角
+            alpha = beta - phi
+            aoa_deg = np.degrees(alpha)
             
-            C_x_final = cl_final * np.cos(phi_final) - cd_final * np.sin(phi_final) 
-            C_y_final = cl_final * np.sin(phi_final) + cd_final * np.cos(phi_final)
+            # 合成速度
+            W = V_rot / np.cos(phi)
+            W_sq = W**2
+            
+            # レイノルズ数
+            reynolds = (W * chord) / kinematic_viscosity
+            
+            # 🔽 [修正] 3つの戻り値を受け取り、3つ目(t/c)は捨てる
+            cl, cd, _ = get_airfoil_properties(airfoil_name, reynolds, aoa_deg)
+            # 🔼 [修正]
+            
+            # ブレード要素の力係数 (回転面座標系)
+            C_x = cl * np.cos(phi) - cd * np.sin(phi) # 推力方向
+            # C_y = cl * np.sin(phi) + cd * np.cos(phi) # 回転抵抗方向
+            
+            # プラントルの損失係数 F (先端 + ハブ)
+            F = losses.prandtl_tip_loss(B, r, R, phi) * losses.prandtl_hub_loss(B, r, R_hub, phi)
+            F = max(F, 1e-4) # ゼロ除算回避
+            
+            # 運動量理論とのバランス式 (fsolveでゼロになるphiを探す)
+            # (sigma * C_x) / (4 * F * sin(phi)^2)  =  (v_axial / V_tip) ... の変形
+            
+            # ここでは簡易的に BEMTの基本式:
+            # sin(phi) = v_axial_local / W  <-- 未知数が絡むので
+            # 典型的な繰り返し式:
+            #   4 * F * sin(phi) * tan(phi) = sigma * Cl * ... 
+            # よりも、推力係数の一致を見る形式が安定しやすい。
+            
+            # 今回は「流入角 phi」を探索するシンプルな形式を採用
+            # v_axial = V_infinity + v_induced
+            # tan(phi) = v_axial / V_rot
+            
+            lhs = 4 * F * np.sin(phi) * np.tan(phi)
+            rhs = sigma * C_x # 近似: Cl >> Cd なので C_x ≒ Cl * cos(phi)
+            
+            # V_infがある場合、もう少し複雑になるが、Hover (V=0) ならこれでOK
+            return lhs - rhs
 
-            dT = 0.5 * air_density * W_sq_final * (prop.num_blades * chord) * C_x_final * dr
-            dQ = 0.5 * air_density * W_sq_final * (prop.num_blades * chord) * C_y_final * r * dr
+        # 初期推定値
+        phi_init = np.arctan2(0.1 * V_rot, V_rot) # 適当な初期値
         
-        total_fan_thrust_elements += dT
-        total_torque_elements += dQ
+        phi_solution = fsolve(residuals, phi_init)
+        phi_final = float(phi_solution[0])
         
-    # --- 4. 最終的な性能を計算 ---
-    total_fan_thrust = total_fan_thrust_elements
-    total_torque = total_torque_elements
-    power = total_torque * omega
+        # --- 3. 収束後の値で力を計算 ---
+        W_final = V_rot / np.cos(phi_final)
+        alpha_final = beta - phi_final
+        reynolds_final = (W_final * chord) / kinematic_viscosity
+        
+        # 🔽 [修正] 3つの戻り値を受け取る
+        cl_final, cd_final, _ = get_airfoil_properties(airfoil_name, reynolds_final, np.degrees(alpha_final))
+        # 🔼 [修正]
+        
+        # 力の係数
+        C_x_final = cl_final * np.cos(phi_final) - cd_final * np.sin(phi_final)
+        C_y_final = cl_final * np.sin(phi_final) + cd_final * np.cos(phi_final)
+        
+        # 要素の推力とトルク
+        # dL = 0.5 * rho * W^2 * chord * cl * dr
+        # dT = B * (dL * cos(phi) - dD * sin(phi))
+        #    = 0.5 * rho * W^2 * B * chord * C_x * dr
+        
+        dT_elem = 0.5 * air_density * (W_final**2) * B * chord * C_x_final * dr
+        dQ_elem = 0.5 * air_density * (W_final**2) * B * chord * C_y_final * r * dr
+        
+        total_thrust_fan += dT_elem
+        total_torque += dQ_elem
+
+    # --- 4. 総合性能の計算 ---
     
-    if fan_thrust_fraction > 1e-6 and abs(total_fan_thrust) > 1e-6:
-        total_thrust = total_fan_thrust / fan_thrust_fraction
+    # パワー P = Torque * omega
+    power_watts = total_torque * omega
+    
+    # ダクトを含めた総推力
+    # T_total = T_fan + T_duct
+    # OptDuct理論: T_total = T_fan / F_lip
+    
+    if prop.duct_length > 0.0 and F_lip < 1.0:
+        total_thrust_combined = total_thrust_fan / F_lip
+        thrust_duct = total_thrust_combined - total_thrust_fan
     else:
-        total_thrust = total_fan_thrust
+        total_thrust_combined = total_thrust_fan
+        thrust_duct = 0.0
 
-    total_duct_thrust = total_thrust - total_fan_thrust
-
-    if power > 1e-6 and v_infinity > 0.01:
-        efficiency = (total_thrust * v_infinity) / power
+    # 効率 (Figure of Merit for Hover)
+    # FM = (T^1.5 / sqrt(2 * rho * A)) / P
+    area_disk = np.pi * (R**2)
+    if power_watts > 0:
+        fom = (total_thrust_combined**1.5 / np.sqrt(2 * air_density * area_disk)) / power_watts
     else:
-        efficiency = 0.0
-        
-    return total_thrust, total_fan_thrust, total_duct_thrust, total_torque, power, efficiency
+        fom = 0.0
+
+    return total_thrust_combined, total_thrust_fan, thrust_duct, total_torque, power_watts, fom

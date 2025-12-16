@@ -1,0 +1,61 @@
+--- 🛠️  Step 5: Integrated Duct + Propeller Optimization ---
+Target: Maximize Thrust @ 15000.0 RPM (Hover)
+Constraints: Power <= 3.26 W, Thrust >= 0.196 N
+Optimizing: Blade(2-5), Hub(10-30%), Duct Length, Duct Lip
+  + Pitch/Chord (Bézier, 5 ctrl pts)
+  + Airfoils (3 ctrl pts)
+Available Airfoils (14): ['ah79100a', 'dae51', 'e193', 'e423', 'e61', 'fx60-100', 'fx63-137', 'geminism', 'goe501', 'mh114', 'naca4412', 's1210', 's1223', 's8035']
+--------------------------------------------------
+Running Optuna (500 trials)...
+
+Optimization finished in 19.06 seconds.
+--------------------------------------------------
+✅ Best solution found:
+  Best Thrust: 0.4721 N
+
+  Optimal Parameters (Global):
+    num_blades: 5
+    hub_ratio: 0.184
+    duct_length: 29.2 mm
+    duct_lip_radius: 8.0 mm
+
+  Optimal Control Points (Airfoil):
+    ['ah79100a', 'fx60-100', 'fx60-100']
+
+  Optimal Control Points (Pitch, deg):
+    [20.03, 26.61, 14.96, 19.19, 10.23]
+
+  Optimal Control Points (Chord, mm):
+    [4.2, 5.0, 4.0, 2.7, 3.6]
+
+  Final Performance Check (using smoothed curves):
+    Total Thrust: 0.4721 N
+    (Fan Thrust:  0.2360 N)
+    (Duct Thrust: 0.2360 N)
+    Power:        3.24 W (Constraint: <= 3.26 W)
+    g/W:          14.84
+
+--- CAD Data (BEMT Points Definition) ---
+    (Total 20 points, i=0 is Hub, i=19 is Tip)
+    i | Radius (m) | Pitch (deg) | Chord (mm) | Nearest Airfoil
+    --|------------|-------------|------------|----------------
+     0 |   0.0070   |     20.027 |      4.2   | ah79100a
+     1 |   0.0086   |     21.128 |      4.3   | ah79100a
+     2 |   0.0103   |     21.737 |      4.4   | ah79100a
+     3 |   0.0119   |     21.954 |      4.5   | ah79100a
+     4 |   0.0135   |     21.869 |      4.5   | ah79100a
+     5 |   0.0152   |     21.563 |      4.4   | fx60-100
+     6 |   0.0168   |     21.100 |      4.3   | fx60-100
+     7 |   0.0184   |     20.538 |      4.2   | fx60-100
+     8 |   0.0201   |     19.919 |      4.1   | fx60-100
+     9 |   0.0217   |     19.275 |      4.0   | fx60-100
+    10 |   0.0233   |     18.627 |      3.8   | fx60-100
+    11 |   0.0249   |     17.985 |      3.7   | fx60-100
+    12 |   0.0266   |     17.344 |      3.6   | fx60-100
+    13 |   0.0282   |     16.690 |      3.5   | fx60-100
+    14 |   0.0298   |     15.998 |      3.4   | fx60-100
+    15 |   0.0315   |     15.229 |      3.3   | fx60-100
+    16 |   0.0331   |     14.335 |      3.3   | fx60-100
+    17 |   0.0347   |     13.254 |      3.4   | fx60-100
+    18 |   0.0364   |     11.914 |      3.4   | fx60-100
+    19 |   0.0380   |     10.230 |      3.6   | fx60-100

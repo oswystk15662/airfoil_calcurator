@@ -1,0 +1,61 @@
+--- 🛠️  Step 5: Integrated Duct + Propeller Optimization ---
+Target: Maximize Thrust @ 15000.0 RPM (Hover)
+Constraints: Power <= 3.26 W, Thrust >= 0.196 N
+Optimizing: Blade(2-5), Hub(10-30%), Duct Length, Duct Lip
+  + Pitch/Chord (Bézier, 5 ctrl pts)
+  + Airfoils (3 ctrl pts)
+Available Airfoils (18): ['ah79100a', 'dae51', 'e193', 'e395', 'e423', 'e61', 'fx60-100', 'fx63-137', 'geminism', 'goe430', 'goe501', 'mh114', 'naca4412', 's1210', 's1223', 's8035', 'sd7032-099-88', 'sd7037-092-88']
+--------------------------------------------------
+Running Optuna (1000 trials)...
+
+Optimization finished in 55.86 seconds.
+--------------------------------------------------
+✅ Best solution found:
+  Best Thrust: 0.4814 N
+
+  Optimal Parameters (Global):
+    num_blades: 5
+    hub_ratio: 0.164
+    duct_length: 37.4 mm
+    duct_lip_radius: 3.0 mm
+
+  Optimal Control Points (Airfoil):
+    ['fx63-137', 'ah79100a', 'fx60-100']
+
+  Optimal Control Points (Pitch, deg):
+    [24.28, 21.17, 22.21, 10.19, 11.4]
+
+  Optimal Control Points (Chord, mm):
+    [3.7, 4.8, 4.8, 4.2, 3.9]
+
+  Final Performance Check (using smoothed curves):
+    Total Thrust: 0.4814 N
+    (Fan Thrust:  0.2407 N)
+    (Duct Thrust: 0.2407 N)
+    Power:        3.26 W (Constraint: <= 3.26 W)
+    g/W:          15.07
+
+--- CAD Data (BEMT Points Definition) ---
+    (Total 20 points, i=0 is Hub, i=19 is Tip)
+    i | Radius (m) | Pitch (deg) | Chord (mm) | Nearest Airfoil
+    --|------------|-------------|------------|----------------
+     0 |   0.0062   |     24.284 |      3.7   | fx63-137
+     1 |   0.0079   |     23.687 |      3.9   | fx63-137
+     2 |   0.0096   |     23.172 |      4.1   | fx63-137
+     3 |   0.0112   |     22.692 |      4.2   | fx63-137
+     4 |   0.0129   |     22.206 |      4.4   | fx63-137
+     5 |   0.0146   |     21.683 |      4.4   | ah79100a
+     6 |   0.0163   |     21.097 |      4.5   | ah79100a
+     7 |   0.0179   |     20.432 |      4.5   | ah79100a
+     8 |   0.0196   |     19.681 |      4.5   | ah79100a
+     9 |   0.0213   |     18.844 |      4.5   | ah79100a
+    10 |   0.0230   |     17.928 |      4.5   | ah79100a
+    11 |   0.0246   |     16.948 |      4.5   | ah79100a
+    12 |   0.0263   |     15.930 |      4.4   | ah79100a
+    13 |   0.0280   |     14.905 |      4.3   | ah79100a
+    14 |   0.0296   |     13.912 |      4.3   | ah79100a
+    15 |   0.0313   |     13.000 |      4.2   | fx60-100
+    16 |   0.0330   |     12.224 |      4.1   | fx60-100
+    17 |   0.0347   |     11.649 |      4.0   | fx60-100
+    18 |   0.0363   |     11.346 |      4.0   | fx60-100
+    19 |   0.0380   |     11.396 |      3.9   | fx60-100

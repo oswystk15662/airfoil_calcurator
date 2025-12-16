@@ -1,0 +1,61 @@
+--- 🛠️  Step 5: Integrated Duct + Propeller Optimization ---
+Target: Maximize Thrust @ 15000.0 RPM (Hover)
+Constraints: Power <= 3.26 W, Thrust >= 0.196 N
+Optimizing: Blade(2-5), Hub(10-30%), Duct Length, Duct Lip
+  + Pitch/Chord (Bézier, 5 ctrl pts)
+  + Airfoils (3 ctrl pts)
+Available Airfoils (18): ['ah79100a', 'dae51', 'e193', 'e395', 'e423', 'e61', 'fx60-100', 'fx63-137', 'geminism', 'goe430', 'goe501', 'mh114', 'naca4412', 's1210', 's1223', 's8035', 'sd7032-099-88', 'sd7037-092-88']
+--------------------------------------------------
+Running Optuna (500 trials)...
+
+Optimization finished in 20.37 seconds.
+--------------------------------------------------
+✅ Best solution found:
+  Best Thrust: 0.4519 N
+
+  Optimal Parameters (Global):
+    num_blades: 4
+    hub_ratio: 0.164
+    duct_length: 7.2 mm
+    duct_lip_radius: 0.9 mm
+
+  Optimal Control Points (Airfoil):
+    ['e193', 's1210', 'ah79100a']
+
+  Optimal Control Points (Pitch, deg):
+    [17.65, 26.07, 22.48, 13.87, 12.12]
+
+  Optimal Control Points (Chord, mm):
+    [4.6, 4.8, 3.1, 4.8, 2.6]
+
+  Final Performance Check (using smoothed curves):
+    Total Thrust: 0.4519 N
+    (Fan Thrust:  0.2260 N)
+    (Duct Thrust: 0.2260 N)
+    Power:        3.26 W (Constraint: <= 3.26 W)
+    g/W:          14.15
+
+--- CAD Data (BEMT Points Definition) ---
+    (Total 20 points, i=0 is Hub, i=19 is Tip)
+    i | Radius (m) | Pitch (deg) | Chord (mm) | Nearest Airfoil
+    --|------------|-------------|------------|----------------
+     0 |   0.0062   |     17.645 |      4.6   | e193
+     1 |   0.0079   |     19.223 |      4.6   | e193
+     2 |   0.0096   |     20.426 |      4.6   | e193
+     3 |   0.0113   |     21.280 |      4.5   | e193
+     4 |   0.0129   |     21.814 |      4.4   | e193
+     5 |   0.0146   |     22.053 |      4.3   | s1210
+     6 |   0.0163   |     22.026 |      4.3   | s1210
+     7 |   0.0179   |     21.763 |      4.2   | s1210
+     8 |   0.0196   |     21.295 |      4.1   | s1210
+     9 |   0.0213   |     20.652 |      4.0   | s1210
+    10 |   0.0230   |     19.866 |      4.0   | s1210
+    11 |   0.0246   |     18.970 |      3.9   | s1210
+    12 |   0.0263   |     17.999 |      3.9   | s1210
+    13 |   0.0280   |     16.987 |      3.8   | s1210
+    14 |   0.0296   |     15.970 |      3.8   | s1210
+    15 |   0.0313   |     14.985 |      3.7   | ah79100a
+    16 |   0.0330   |     14.069 |      3.5   | ah79100a
+    17 |   0.0347   |     13.260 |      3.3   | ah79100a
+    18 |   0.0363   |     12.599 |      3.0   | ah79100a
+    19 |   0.0380   |     12.124 |      2.6   | ah79100a
