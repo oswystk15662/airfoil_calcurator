@@ -161,8 +161,8 @@ def transform_coordinates(coords, chord_mm, pitch_deg, radius_mm):
 def main():
     print("--- 🛠️  Exporting 3D Curves for SolidWorks (Resampled) ---")
     
-    # result_file = find_latest_result_file()
-    result_file = "C:\\Users\\oswys\\Documents\\sd_technology_ensyu\\airfoil_calcurator\\optimization_results\\result_12091154.txt"
+    result_file = find_latest_result_file()
+    # result_file = "C:\\Users\\oswys\\Documents\\sd_technology_ensyu\\airfoil_calcurator\\optimization_results\\result_12161150.txt"
     if not result_file:
         print("Error: No result_*.txt file found.")
         return

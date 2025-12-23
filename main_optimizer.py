@@ -99,9 +99,15 @@ def evaluate_design(trial):
     r_coords_airfoil_def = hub_radius + SPAN_POSITIONS_AIRFOIL * blade_span
 
     # --- 3. 弦長 ---
+    # --- 3. 弦長 (5点の制御点) ---
     chord_control_points_y = [
-        trial.suggest_float(f"chord_ctrl_0", 0.003, 0.005, step=0.0001), 
-        trial.suggest_float(f"chord_ctrl_1", 0.004, 0.005, step=0.0001),
+        # 🔽 [修正] 半径5mm以内の弦長を太くするため、根元の探索範囲を 7mm～10mm に変更
+        trial.suggest_float(f"chord_ctrl_0", 0.007, 0.010, step=0.0001), 
+        
+        # 🔽 [修正] 根元から滑らかに繋がるよう、2点目も少し太めを許容 (4mm～7mm)
+        trial.suggest_float(f"chord_ctrl_1", 0.004, 0.007, step=0.0001),
+        
+        # 以下は変更なし (または微調整)
         trial.suggest_float(f"chord_ctrl_2", 0.003, 0.005, step=0.0001),
         trial.suggest_float(f"chord_ctrl_3", 0.002, 0.005, step=0.0001),
         trial.suggest_float(f"chord_ctrl_4", 0.002, 0.004, step=0.0001)
@@ -178,7 +184,7 @@ if __name__ == "__main__":
     optuna.logging.set_verbosity(optuna.logging.WARNING)
     study = optuna.create_study(direction="maximize")
     
-    n_trials = 500
+    n_trials = 1000
     log_and_print(f"Running Optuna ({n_trials} trials)...")
     start_time = time.time()
     study.optimize(evaluate_design, n_trials=n_trials, n_jobs=-1)
