@@ -1,0 +1,36 @@
+--- 🛠️  Propeller Optimization (Config: Tello_Propeller_Optimization) ---
+Target: Maximize Thrust @ 15000.0 RPM
+Constraints: Power <= 3.26 W, Thrust >= 0.196 N
+             Hub Dia: 3.0mm - 12.0mm
+             Chord Control Points: [[7.0, 10.0], [4.0, 7.0], [3.0, 5.0], [2.0, 5.0], [2.0, 4.0]]
+--------------------------------------------------
+Running Optuna (500 trials, jobs=-1)...
+
+Optimization finished in 19.95 seconds.
+✅ Best solution found:
+  Best Thrust: 1.2064 N
+    num_blades: 5
+    hub_ratio: 0.049 (Dia: 3.7 mm)
+
+--- CAD Data (BEMT Points Definition) ---
+    i | Radius (m) | Pitch (deg) | Chord (mm) | Nearest Airfoil
+     0 |   0.0019   |     26.003 |      8.4   | e395
+     1 |   0.0038   |     26.099 |      8.0   | e395
+     2 |   0.0057   |     26.009 |      7.5   | e395
+     3 |   0.0076   |     25.723 |      7.1   | e395
+     4 |   0.0095   |     25.239 |      6.7   | e395
+     5 |   0.0114   |     24.559 |      6.3   | e423
+     6 |   0.0133   |     23.692 |      5.9   | e423
+     7 |   0.0152   |     22.652 |      5.5   | e423
+     8 |   0.0171   |     21.461 |      5.1   | e423
+     9 |   0.0190   |     20.143 |      4.8   | e423
+    10 |   0.0209   |     18.732 |      4.5   | e423
+    11 |   0.0228   |     17.267 |      4.3   | e423
+    12 |   0.0247   |     15.790 |      4.1   | e423
+    13 |   0.0266   |     14.352 |      3.9   | e423
+    14 |   0.0285   |     13.010 |      3.7   | e423
+    15 |   0.0304   |     11.824 |      3.6   | naca63
+    16 |   0.0323   |     10.863 |      3.6   | naca63
+    17 |   0.0342   |     10.201 |      3.5   | naca63
+    18 |   0.0361   |      9.916 |      3.6   | naca63
+    19 |   0.0380   |     10.096 |      3.6   | naca63

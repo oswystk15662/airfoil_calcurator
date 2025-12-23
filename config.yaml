@@ -1,0 +1,67 @@
+project:
+  name: "Tello_Propeller_Optimization"
+  output_dir: "./optimization_results"
+  curve_output_dir: "./3d_curves_output"
+  dat_file_dir: "./airfoil_data/dat_files"
+  csv_polar_dir: "./airfoil_data/csv_polars"
+  xfoil_path: "./xfoil.exe"
+
+drone:
+  diameter_mm: 76.0
+  rpm: 15000.0
+  v_infinity: 0.0
+  # Physics
+  air_density: 1.225
+  kinematic_viscosity: 1.4607e-5
+
+database_generation:
+  reynolds_list: [10000, 15000, 20000, 30000, 40000, 50000, 60000]
+  aoa:
+    start: -5.0
+    end: 20.0
+    step: 0.5
+  ncrit: 9.0
+
+constraints:
+  max_power_w: 3.26
+  min_thrust_n: 0.196
+  hub:
+    min_radius_mm: 1.5      # 直径3mm
+    max_diameter_mm: 6.0    # 最大直径6mm
+  geometry:
+    max_duct_lip_mm: 10.0
+    min_thickness_mm: 0.3
+
+solver:
+  bemt_elements: 20
+  geom_control_points: 5
+  airfoil_control_points: 3
+
+design_space:
+  num_blades:
+    min: 2
+    max: 5
+  
+  # 弦長制御点の範囲 (mm単位)
+  # index: [min, max]
+  chord_constraints:
+    - [7.0, 10.0]  # Root (index 0) - 太く設定
+    - [4.0, 7.0]   # Index 1
+    - [3.0, 5.0]   # Index 2
+    - [2.0, 5.0]   # Index 3
+    - [2.0, 4.0]   # Tip (index 4)
+
+  # ピッチ角制御点の範囲 (度)
+  pitch_constraints:
+    - [15.0, 35.0] # Root
+    - [12.0, 30.0]
+    - [10.0, 25.0]
+    - [5.0, 20.0]
+    - [5.0, 18.0] # Tip
+
+optuna:
+  n_trials: 500
+  n_jobs: -1  # -1 for all cores
+
+post_process:
+  resample_points: 100
